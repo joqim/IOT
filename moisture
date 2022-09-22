@@ -1,0 +1,89 @@
+#include <Arduino.h>
+#include "painlessMesh.h"
+
+#define PINNUM  36
+
+const int AirValue = 3600;   
+const int WaterValue = 2700;  
+int soilMoistureValue = 0;
+int soilmoisturepercent=0;
+
+#define   MESH_PREFIX     "Group6"
+#define   MESH_PASSWORD   "Group6Password"
+#define   MESH_PORT       5555
+
+Scheduler userScheduler; // to control your personal task
+painlessMesh  mesh;
+
+// User stub
+void sendMessage() ; // Prototype so PlatformIO doesn't complain
+
+Task taskSendMessage( TASK_SECOND * 1 , TASK_FOREVER, &sendMessage );
+
+void sendMessage() {
+  String msg = "M,";
+  msg += mesh.getNodeId();
+  msg += ", ";
+  if(soilmoisturepercent >= 100) {
+    msg += 100;  
+  }else if(soilmoisturepercent <= 0){
+    msg += 0;
+  }else{
+    msg += soilmoisturepercent;
+  }
+  msg += "%";
+  mesh.sendBroadcast( msg );
+  taskSendMessage.setInterval( TASK_SECOND*10 );
+}
+
+// Needed for painless library
+void receivedCallback( uint32_t from, String &msg ) {
+  Serial.printf("startHere: Received from %u msg=%s\n", from, msg.c_str());
+}
+
+void newConnectionCallback(uint32_t nodeId) {
+    Serial.printf("--> startHere: New Connection, nodeId = %u\n", nodeId);
+}
+
+void changedConnectionCallback() {
+  Serial.printf("Changed connections\n");
+}
+
+void nodeTimeAdjustedCallback(int32_t offset) {
+    Serial.printf("Adjusted time %u. Offset = %d\n", mesh.getNodeTime(),offset);
+}
+
+
+void computeMoisture(){
+  soilMoistureValue = analogRead(PINNUM);
+  soilmoisturepercent = map(soilMoistureValue, AirValue, WaterValue, 0, 100);
+  if(soilmoisturepercent >= 100) {
+    Serial.println("100 %");
+  }
+  else if(soilmoisturepercent <=0){
+    Serial.println("0 %");
+  }
+  else if(soilmoisturepercent >0 && soilmoisturepercent < 100){
+    Serial.print(soilmoisturepercent);
+    Serial.println("%");
+  }
+  delay(250);
+}
+
+void setup() {
+  Serial.begin(115200); 
+  mesh.setDebugMsgTypes( ERROR | STARTUP ); 
+  mesh.init( MESH_PREFIX, MESH_PASSWORD, &userScheduler, MESH_PORT );
+  mesh.onReceive(&receivedCallback);
+  mesh.onNewConnection(&newConnectionCallback);
+  mesh.onChangedConnections(&changedConnectionCallback);
+  mesh.onNodeTimeAdjusted(&nodeTimeAdjustedCallback);
+
+  userScheduler.addTask( taskSendMessage );
+  taskSendMessage.enable();
+}
+
+void loop() {
+  computeMoisture();
+  mesh.update();
+}
