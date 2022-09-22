@@ -5,12 +5,12 @@
 
 #include "painlessMesh.h"
 
-#define   MESH_PREFIX     "Group6"
-#define   MESH_PASSWORD   "Group6Password"
+#define   MESH_PREFIX     "Group7"
+#define   MESH_PASSWORD   "Group7Password"
 #define   MESH_PORT       5555
 
-const char *ssid = "MyESP32AP";
-const char *password = "testpassword";
+const char *ssid = "MyESP32AP1";
+const char *password = "testpassword1";
  
 WiFiServer server(80);
 
@@ -124,7 +124,7 @@ void loop() {
           client.println();
           client.println("<!DOCTYPE HTML>");
           client.println("<html>");
-          client.println("<p> PIR: ON </p>");
+          client.println("<p> PIR: "+pir+ "</p>");
           client.println("<p> Moisture: "+moisture+"</p>");
           client.println("<p> BME: "+bme+"</p>");
           // Report a sensor value instead of saying hello world...
